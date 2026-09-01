@@ -1,0 +1,49 @@
+# How often the socket and session tables are read. The byte counters are
+# cumulative per connection, so this only loses traffic on connections that
+# both open and close inside one interval.
+interval: 30s
+
+# Both commands are run as-is. `ss` needs the network namespace the SMB port
+# lives in; `smbstatus` needs Samba's tdb directory.
+ss: [ss, -tin, state, established, "( sport = :445 )"]
+smbstatus: [smbstatus, -b]
+
+# Operation counts come from Samba's full_audit module. Requires on the server:
+#
+#   vfs objects        = full_audit
+#   full_audit:prefix  = %u|%I|%S
+#   full_audit:success = create_file mkdirat unlinkat renameat
+#   full_audit:failure = none
+#
+# Lines are counted and discarded. Nothing is stored or forwarded.
+audit:
+  enabled: true
+  path: /var/log/samba/audit.log
+
+health:
+  stale_timeout: 90s
+  endpoint: ":8081"
+
+otel:
+  exporters:
+    pretty: {}
+    otlp/local:
+      endpoint: localhost:4317
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: false
+    prometheus/local:
+      endpoint: ":8888"
+      namespace: smb_exporter
+
+  providers:
+    meter:
+      processors:
+        - resource/smb-exporter
+      exporters:
+        - otlp/local
+        - prometheus/local
+    logger:
+      exporters:
+        - pretty
