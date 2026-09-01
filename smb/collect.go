@@ -85,11 +85,11 @@ type Source struct {
 	Smbstatus  []string
 }
 
+// DefaultSource omits smbstatus: the deployment that works without disturbing
+// a running smbd cannot reach its lock directory. Set it explicitly when the
+// exporter runs beside smbd.
 func DefaultSource() Source {
-	return Source{
-		Ss:        append([]string{"ss"}, SsArgs...),
-		Smbstatus: append([]string{"smbstatus"}, SmbstatusArgs...),
-	}
+	return Source{Ss: append([]string{"ss"}, SsArgs...)}
 }
 
 func (s Source) Sample(ctx context.Context) (*Sample, error) {
@@ -102,13 +102,19 @@ func (s Source) Sample(ctx context.Context) (*Sample, error) {
 		return nil, fmt.Errorf("parse ss: %w", err)
 	}
 
-	to, err := run(ctx, s.Smbstatus)
-	if err != nil {
-		return nil, fmt.Errorf("run smbstatus: %w", err)
-	}
-	sessions, err := ParseSmbstatus(bytes.NewReader(to))
-	if err != nil {
-		return nil, fmt.Errorf("parse smbstatus: %w", err)
+	// smbstatus is optional. It reads Samba's lock directory, which is private
+	// to the smbd container, so a standalone deployment leaves this unset and
+	// takes the mapping from the audit stream instead.
+	sessions := map[string]Session{}
+	if len(s.Smbstatus) > 0 {
+		to, err := run(ctx, s.Smbstatus)
+		if err != nil {
+			return nil, fmt.Errorf("run smbstatus: %w", err)
+		}
+		sessions, err = ParseSmbstatus(bytes.NewReader(to))
+		if err != nil {
+			return nil, fmt.Errorf("parse smbstatus: %w", err)
+		}
 	}
 
 	return &Sample{Conns: conns, Sessions: sessions}, nil

@@ -174,9 +174,7 @@ func (c *Config) Evaluate() error {
 	if len(c.Ss) == 0 {
 		c.Ss = d.Ss
 	}
-	if len(c.Smbstatus) == 0 {
-		c.Smbstatus = d.Smbstatus
-	}
+	// c.Smbstatus stays empty unless configured; see smb.DefaultSource.
 	if err := c.Audit.Evaluate(); err != nil {
 		return err
 	}

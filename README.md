@@ -85,11 +85,14 @@ from the socket.
 
 ## Running
 
-It needs to see two things that usually live in different places: the **network
-namespace** holding the SMB port, and Samba's **tdb directory**. Alongside the
-smbd process is the simple answer — as a sidecar in the same pod when smbd runs
-in Kubernetes, sharing the pod's network namespace and mounting the same state
-volume.
+It needs two things: the **network namespace** holding the SMB port, and the
+**audit log**. Both are reachable from outside smbd, so the exporter does not
+have to live in the same container — which matters, because restarting a
+fileserver to add monitoring to it is its own kind of outage.
+
+Attribution is better when  is available, but that needs Samba's
+lock directory and therefore the same container. Running without it costs only
+the accounts that are connected and completely idle.
 
 ```sh
 docker run --rm -it --network host \

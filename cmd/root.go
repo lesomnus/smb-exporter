@@ -104,6 +104,11 @@ func NewCmdRoot() *xli.Command {
 							var ops map[smb.Op]int64
 							if audit != nil {
 								ops = audit.Drain()
+								// smbstatus, when available, is authoritative;
+								// the audit-derived map fills the rest.
+								audit.Sessions.Merge(s.Sessions)
+								s.Sessions = audit.Sessions.Snapshot()
+								audit.Sessions.Retain(s.Conns)
 							}
 							record(s, col.Apply(s), ops)
 							last.Store(new(time.Now()))

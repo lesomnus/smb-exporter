@@ -66,20 +66,25 @@ func TestParseSmbstatus(t *testing.T) {
 
 func TestParseAuditLine(t *testing.T) {
 	line := "  taehyeon.kim|10.1.2.136|simulation|create_file|ok|0x80000000|file|open|/srv/data/teams/simulation/a/b/grasp.json"
-	op, ok := smb.ParseAuditLine(line)
+	op, ip, ok := smb.ParseAuditLine(line)
 	if !ok {
 		t.Fatal("want parsed")
 	}
 	if op.User != "taehyeon.kim" || op.Share != "simulation" || op.Op != "create_file" {
 		t.Errorf("got %+v", op)
 	}
+	// The client address is what lets a standalone deployment attribute
+	// traffic without reading smbd's lock directory.
+	if ip != "10.1.2.136" {
+		t.Errorf("client address: %q", ip)
+	}
 
 	// The header line Samba writes before every record carries no fields.
-	if _, ok := smb.ParseAuditLine("[2026/09/02 00:59:29.692874,  1] source3/modules/vfs_full_audit.c:637(do_log)"); ok {
+	if _, _, ok := smb.ParseAuditLine("[2026/09/02 00:59:29.692874,  1] source3/modules/vfs_full_audit.c:637(do_log)"); ok {
 		t.Error("header must not parse")
 	}
 	// A failed operation is not a file that was read.
-	if _, ok := smb.ParseAuditLine("  a|1.2.3.4|s|create_file|fail|x|file|open|/p"); ok {
+	if _, _, ok := smb.ParseAuditLine("  a|1.2.3.4|s|create_file|fail|x|file|open|/p"); ok {
 		t.Error("failure must not count")
 	}
 }
@@ -125,5 +130,23 @@ func TestUnknownUser(t *testing.T) {
 	d := c.Apply(s)
 	if len(d) != 1 || d[0].User != "unknown" {
 		t.Fatalf("connection without a session must be attributed to unknown, got %+v", d)
+	}
+}
+
+func TestSessionMapFromAudit(t *testing.T) {
+	m := smb.NewSessionMap()
+	m.Put("10.1.2.136", "taehyeon.kim")
+	if m.Snapshot()["10.1.2.136"].User != "taehyeon.kim" {
+		t.Fatal("put/snapshot")
+	}
+	// An authoritative source wins.
+	m.Merge(map[string]smb.Session{"10.1.2.136": {User: "real.name", ClientIP: "10.1.2.136"}})
+	if m.Snapshot()["10.1.2.136"].User != "real.name" {
+		t.Error("merge must override")
+	}
+	// A client with no connection left is forgotten.
+	m.Retain([]smb.Conn{{ClientIP: "10.9.9.9"}})
+	if len(m.Snapshot()) != 0 {
+		t.Error("retain must drop stale entries")
 	}
 }

@@ -19,20 +19,23 @@ import (
 // preceded by a Samba log header line, which has no `|` and is skipped. The
 // path is deliberately not returned: it is the largest field and nothing here
 // wants it.
-func ParseAuditLine(line string) (Op, bool) {
+func ParseAuditLine(line string) (Op, string, bool) {
 	if !strings.Contains(line, "|") {
-		return Op{}, false
+		return Op{}, "", false
 	}
 	f := strings.Split(strings.TrimSpace(line), "|")
 	if len(f) < 5 || f[0] == "" {
-		return Op{}, false
+		return Op{}, "", false
 	}
 	// Only successes are configured (`full_audit:failure = none`), but do not
 	// assume it: a failed open is not a file that was read.
 	if f[4] != "ok" {
-		return Op{}, false
+		return Op{}, "", false
 	}
-	return Op{User: f[0], Share: f[2], Op: f[3]}, true
+	// f[1] is %I, the client address. It is returned rather than put on Op
+	// because Op is a map key: adding an address would multiply the series by
+	// the number of clients for no gain.
+	return Op{User: f[0], Share: f[2], Op: f[3]}, f[1], true
 }
 
 // AuditCounter follows the full_audit log and keeps counts, never lines.
@@ -46,12 +49,17 @@ func ParseAuditLine(line string) (Op, bool) {
 type AuditCounter struct {
 	path string
 
+	// Sessions is filled from the %I field of every record, which is how a
+	// standalone deployment learns who a client address belongs to without
+	// reach into smbd's lock directory. See SessionMap.
+	Sessions *SessionMap
+
 	mu sync.Mutex
 	n  map[Op]int64
 }
 
 func NewAuditCounter(path string) *AuditCounter {
-	return &AuditCounter{path: path, n: map[Op]int64{}}
+	return &AuditCounter{path: path, Sessions: NewSessionMap(), n: map[Op]int64{}}
 }
 
 // Drain returns the counts accumulated since the last call and resets them.
@@ -123,8 +131,9 @@ func (c *AuditCounter) Follow(ctx context.Context) error {
 
 		line, err := br.ReadString('\n')
 		if len(line) > 0 {
-			if op, ok := ParseAuditLine(line); ok {
+			if op, ip, ok := ParseAuditLine(line); ok {
 				c.add(op)
+				c.Sessions.Put(ip, op.User)
 			}
 			continue
 		}
