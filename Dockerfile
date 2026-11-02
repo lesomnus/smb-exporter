@@ -1,4 +1,4 @@
-FROM golang:1.26-trixie AS build
+FROM golang:1.27-trixie AS build
 WORKDIR /src
 # go.sum may not be present yet; go mod download writes it.
 COPY go.mod go.sum* ./
