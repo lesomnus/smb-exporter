@@ -4,11 +4,11 @@ go 1.26.2
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/lesomnus/mkot v0.0.0-20261109051210-adf1656dc93b
-	github.com/lesomnus/mkot/otlp v0.0.0-20261109051210-adf1656dc93b
-	github.com/lesomnus/mkot/pretty v0.0.0-20261109051210-adf1656dc93b
-	github.com/lesomnus/mkot/prometheus v0.0.0-20261109051210-adf1656dc93b
-	github.com/lesomnus/otx v0.0.0-20261109051205-9adcf92d2c8d
+	github.com/lesomnus/mkot v0.0.0-20261116004612-c43b84a5367d
+	github.com/lesomnus/mkot/otlp v0.0.0-20261116004612-c43b84a5367d
+	github.com/lesomnus/mkot/pretty v0.0.0-20261116004612-c43b84a5367d
+	github.com/lesomnus/mkot/prometheus v0.0.0-20261116004612-c43b84a5367d
+	github.com/lesomnus/otx v0.0.0-20261116004606-bf8c06d82f60
 	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
 	github.com/lesomnus/z v0.0.0-20260907061127-c3858eb05878
 	github.com/stretchr/testify v1.12.1
@@ -53,7 +53,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
 	golang.org/x/net v0.62.0 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
